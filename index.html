@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CK delivery - confirm</title>
+<style>
+:root{--b:#1f3864;--y:#fff2cc;--g:#d9ead3;--bl:#cfe2f3;--o:#fce5cd;--r:#f4cccc}
+*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Arial,sans-serif;margin:0;background:#f4f5f7;color:#1b1b1b;font-size:15px}
+header{background:var(--b);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px}
+header a{color:#fff;text-decoration:none;font-weight:600}header .t{font-size:17px;font-weight:700;flex:1}
+main{padding:12px 16px;max-width:760px;margin:0 auto}
+.card{background:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+button,.btn{display:inline-block;border:0;border-radius:8px;padding:12px 16px;font-size:15px;font-weight:600;background:var(--b);color:#fff;cursor:pointer;text-decoration:none;text-align:center}
+button.sec,.btn.sec{background:#e8ebf0;color:#1b1b1b}.wa{background:#25d366!important}
+button:disabled{opacity:.5}.full{width:100%;margin-top:8px}
+input,select,textarea{font-size:16px;padding:9px;border:1px solid #c8ccd2;border-radius:7px;width:100%;background:#fff}
+textarea{min-height:150px}label{font-size:13px;color:#555;display:block;margin:10px 0 4px}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.tabs button{padding:8px 12px;font-size:14px;white-space:nowrap}
+.tabs button.off{background:#e8ebf0;color:#333}
+.o{display:flex;justify-content:space-between;gap:8px;padding:11px 12px;border-radius:8px;margin-bottom:8px;text-decoration:none;color:inherit;border-left:5px solid #999;background:#fff}
+.o b{font-size:15px}.o small{color:#666}
+.s-Ordered{border-color:#e0b100}.s-Sent{border-color:#3d85c6}.s-Invoiced{border-color:#38761d}
+.pill{font-size:12px;padding:3px 8px;border-radius:10px;font-weight:600;white-space:nowrap;align-self:center}
+.p-Ordered{background:var(--y)}.p-Sent{background:var(--bl)}.p-Invoiced{background:var(--g)}
+table{width:100%;border-collapse:collapse}td,th{padding:7px 4px;border-bottom:1px solid #eee;text-align:left;vertical-align:middle}
+th{font-size:12px;color:#666;font-weight:600}td.q{width:78px}td.q input{padding:7px;text-align:center}
+tr.warn td{background:var(--y)}tr.diff td{background:var(--o)}.note{font-size:12px;color:#8a5a00}
+.msg{padding:10px 12px;border-radius:8px;margin-bottom:10px}.ok{background:var(--g)}.err{background:var(--r)}.wr{background:var(--y)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.muted{color:#666;font-size:13px}
+.tot{font-size:17px;font-weight:700;text-align:right;margin-top:8px}.hide{display:none}
+.spin{padding:30px;text-align:center;color:#666}
+</style></head>
+
+<body>
+<header><span class="t">CK delivery</span></header>
+<main id="app"><div class="spin">Loading...</div></main>
+<script>
+var API='https://script.google.com/macros/s/AKfycbzME-porCI-bpWFpT4MXjgmwNPwyYRXSwrbB3JnHs6Hg_5yRzPI6hEYnhjhYE0kFqkPKg/exec';
+var $=function(id){return document.getElementById(id);}, app=$('app'), CV=null;
+var K=(new URLSearchParams(location.search)).get('k')||'';
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function pad2(n){return (n<10?'0':'')+n;}
+function nowLocal(){var d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+'T'+pad2(d.getHours())+':'+pad2(d.getMinutes());}
+function showErr(m){var d=$('msg');if(d){d.className='msg err';d.textContent=m;d.scrollIntoView();}else app.innerHTML='<div class="msg err">'+esc(m)+'</div>';}
+function busy(b,t){document.querySelectorAll('button').forEach(function(x){x.disabled=b;});if(b&&t){var d=$('msg');if(d){d.className='msg wr';d.textContent=t;}}}
+function call(body,ok){
+  fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),credentials:'omit',redirect:'follow'})
+    .then(function(r){return r.json();})
+    .then(function(d){if(d&&d.error){busy(false);showErr(d.error);}else ok(d);})
+    .catch(function(){busy(false);showErr('No connection. Please check your internet and try again.');});
+}
+function load(){
+  if(!K){app.innerHTML='<div class="msg err">This link is not complete. Please ask CK to send it again.</div>';return;}
+  call({action:'view',k:K},function(d){CV=d;
+    var head='<div class="card"><b style="font-size:17px">'+esc(d.outlet)+'</b><div class="muted">SO: '+esc(d.so)+' &middot; delivery '+esc(d.delivery)+'</div><div class="muted">Packed by CK: '+esc(d.sentBy)+'</div></div>';
+    if(d.status==='Invoiced'){app.innerHTML=head+'<div class="msg ok">Already confirmed by <b>'+esc(d.receivedBy)+'</b>, received '+esc(d.receivedAt)+'. Thank you.</div>';return;}
+    if(d.status!=='Sent'){app.innerHTML=head+'<div class="msg wr">CK has not sent this delivery yet.</div>';return;}
+    var rows=d.lines.map(function(l){return '<tr><td>'+esc(l.item)+'<div class="muted">'+esc(l.uom)+'</div></td><td><b>'+l.sent+'</b></td><td class="q"><input type="number" inputmode="decimal" id="q'+l.r+'" value="'+l.sent+'"></td></tr>';}).join('');
+    app.innerHTML='<div id="msg"></div>'+head+'<div class="card"><p style="margin-top:0"><b>Change the qty if different. Not received = 0.</b></p>'+
+      '<table><tr><th>Item</th><th>CK sent</th><th>Received</th></tr>'+rows+'</table>'+
+      '<label>Your name</label><input id="by" autocomplete="name">'+
+      '<label>Time received</label><input id="when" type="datetime-local" value="'+nowLocal()+'">'+
+      '<button class="full" onclick="confirmIt()">Confirm</button></div>';
+  });
+}
+var CHECKED='';
+function confirmIt(){
+  var q={},diffs=[];
+  for(var i=0;i<CV.lines.length;i++){var l=CV.lines[i],v=$('q'+l.r).value;if(v===''||!(Number(v)>=0))return showErr('Please fill in every quantity (0 if not received).');q[l.r]=Number(v);if(Number(v)!==Number(l.sent))diffs.push(l.item+': CK sent '+l.sent+', you received '+Number(v));}
+  var by=$('by').value.trim(),when=$('when').value;
+  if(!by)return showErr('Please write your name.');
+  if(!when)return showErr('Please fill in the time received.');
+  var key=JSON.stringify(q);
+  if(diffs.length&&CHECKED!==key){CHECKED=key;var d=$('msg');d.className='msg wr';d.innerHTML='<b>Please check - these are different from what CK sent:</b><br>'+diffs.map(esc).join('<br>')+'<br><br>If correct, tap <b>Confirm</b> again.';d.scrollIntoView();return;}
+  busy(true,'Confirming...');
+  call({action:'confirm',k:K,name:by,when:when,recd:q},function(r){
+    app.innerHTML='<div class="msg ok">Thank you, '+esc(by)+'. Delivery confirmed.</div>'+(r.diff?'<div class="msg wr">Differences sent to office:<br>'+esc(r.diff).split(' | ').join('<br>')+'</div>':'');});
+}
+load();
+</script></body></html>
