@@ -35,7 +35,10 @@ tr.warn td{background:var(--y)}tr.diff td{background:var(--o)}.note{font-size:12
 <script>
 var API='https://script.google.com/macros/s/AKfycbzME-porCI-bpWFpT4MXjgmwNPwyYRXSwrbB3JnHs6Hg_5yRzPI6hEYnhjhYE0kFqkPKg/exec';
 var $=function(id){return document.getElementById(id);}, app=$('app'), CV=null;
-var K=(new URLSearchParams(location.search)).get('k')||'';
+function findCode(t){t=String(t||'');try{t=t+' '+decodeURIComponent(t);}catch(e){}
+  var m=t.match(/[?&#]\s*[kc]\s*(?:=|%3D)\s*([0-9a-f]{10,20})/i)||t.match(/\b([0-9a-f]{14})\b/i);return m?m[1].toLowerCase():'';}
+var K=(function(){var p=new URLSearchParams(location.search),k=p.get('k')||p.get('K')||p.get('c')||findCode(location.href);
+  try{if(k)sessionStorage.setItem('ckk',k);else k=sessionStorage.getItem('ckk')||'';}catch(e){}return k;})();
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 function pad2(n){return (n<10?'0':'')+n;}
 function nowLocal(){var d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+'T'+pad2(d.getHours())+':'+pad2(d.getMinutes());}
@@ -48,7 +51,8 @@ function call(body,ok){
     .catch(function(){busy(false);showErr('No connection. Please check your internet and try again.');});
 }
 function load(){
-  if(!K){app.innerHTML='<div class="msg err">This link is not complete. Please ask CK to send it again.</div>';return;}
+  if(!K){app.innerHTML='<div class="msg wr">This link opened without the delivery code.</div><div class="card"><b>Paste the WhatsApp link here</b><input id="pl" placeholder="https://recipetwist.github.io/ck/?k=..."><button class="btn" id="plb" style="margin-top:10px">Open delivery</button><div class="muted" style="margin-top:8px">In WhatsApp, long-press the link &gt; Copy, then paste above. If it still fails, ask CK to send the link again.</div></div>';
+    $('plb').onclick=function(){var k=findCode($('pl').value);if(!k){alert('No delivery code found in that link. Please ask CK to send it again.');return;}K=k;try{sessionStorage.setItem('ckk',k);}catch(e){}try{history.replaceState(null,'',location.pathname+'?k='+k);}catch(e){}app.innerHTML='<div class="spin">Loading...</div>';load();};return;}
   call({action:'view',k:K},function(d){CV=d;
     var head='<div class="card"><b style="font-size:17px">'+esc(d.outlet)+'</b><div class="muted">SO: '+esc(d.so)+' &middot; delivery '+esc(d.delivery)+'</div><div class="muted">Packed by CK: '+esc(d.sentBy)+'</div></div>';
     if(d.status==='Invoiced'){app.innerHTML=head+'<div class="msg ok">Already confirmed by <b>'+esc(d.receivedBy)+'</b>, received '+esc(d.receivedAt)+'. Thank you.</div>';return;}
